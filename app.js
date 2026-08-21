@@ -19,9 +19,11 @@ const avatarNames = [
   ...Array.from({ length: 19 }, (_, index) => `assets/avatars/sample2-${String(index + 1).padStart(2, "0")}.jpg`),
   ...Array.from({ length: 20 }, (_, index) => `assets/avatars/sample1-${String(index + 1).padStart(2, "0")}.jpg`),
 ];
+const MAX_LIKE_COUNT = 200;
+const WEB_AVATAR_COUNT = 1000;
 const webAvatarNames = Array.from(
-  { length: 99 },
-  (_, index) => `assets/web-avatars/avatar-${String((index * 37) % 99 + 1).padStart(3, "0")}.jpg`,
+  { length: WEB_AVATAR_COUNT },
+  (_, index) => `assets/web-avatars/avatar-${String(index + 1).padStart(4, "0")}.jpg`,
 );
 
 const state = {
@@ -30,6 +32,7 @@ const state = {
   avatars: [],
   libraryAvatars: [],
   webAvatars: [],
+  webStyleBuckets: [],
   customAvatars: [],
   avatarMode: "web",
   avatarOffset: 0,
@@ -39,6 +42,8 @@ const state = {
   dragging: false,
   dragOffset: 0,
   panelBounds: null,
+  existingLikes: null,
+  pageBackground: [255, 255, 255],
 };
 
 function loadImage(url) {
@@ -62,16 +67,52 @@ function showToast(message) {
 }
 
 function getLikeCount() {
-  return clamp(Number.parseInt(likeCount.value, 10) || 0, 0, 99);
+  return clamp(Number.parseInt(likeCount.value, 10) || 0, 0, MAX_LIKE_COUNT);
 }
 
 function setLikeCount(value) {
-  const normalized = clamp(Number.parseInt(value, 10) || 0, 0, 99);
+  const normalized = clamp(Number.parseInt(value, 10) || 0, 0, MAX_LIKE_COUNT);
   likeCount.value = normalized;
   likeCountNumber.value = normalized;
   likeCountOutput.value = normalized;
   likeCountOutput.textContent = normalized;
   render();
+}
+
+function shuffleInPlace(list) {
+  for (let index = list.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    const temporary = list[index];
+    list[index] = list[swapIndex];
+    list[swapIndex] = temporary;
+  }
+  return list;
+}
+
+function interleaveStyleBuckets(buckets) {
+  const queues = buckets
+    .map((bucket) => ({ style: bucket.style, avatars: bucket.avatars.slice() }))
+    .filter((bucket) => bucket.avatars.length > 0);
+  for (const bucket of queues) shuffleInPlace(bucket.avatars);
+
+  const result = [];
+  let progressed = true;
+  while (progressed) {
+    progressed = false;
+    for (const bucket of queues) {
+      if (bucket.avatars.length === 0) continue;
+      result.push(bucket.avatars.shift());
+      progressed = true;
+    }
+  }
+  return result;
+}
+
+function arrangeWebAvatars() {
+  if (state.webStyleBuckets.length > 0) {
+    return interleaveStyleBuckets(state.webStyleBuckets);
+  }
+  return shuffleInPlace(state.webAvatars.slice());
 }
 
 function getTheme() {
@@ -82,13 +123,14 @@ function useAvatarMode(mode, notify = false) {
   state.avatarMode = mode;
   state.avatarOffset = 0;
   if (mode === "library") {
-    state.avatars = state.libraryAvatars;
+    state.avatars = state.libraryAvatars.slice();
     avatarStatus.textContent = `${state.avatars.length} 个内置头像，超出后循环`;
   } else if (mode === "web") {
-    state.avatars = state.webAvatars;
-    avatarStatus.textContent = `${state.avatars.length} 个网络头像，不重复`;
+    state.avatars = arrangeWebAvatars();
+    const styleCount = state.webStyleBuckets.length || 1;
+    avatarStatus.textContent = `${state.avatars.length} 张缓存头像（${styleCount} 种风格均匀穿插），${MAX_LIKE_COUNT} 以内不重复，可随机换一批`;
   } else if (state.customAvatars.length > 0) {
-    state.avatars = state.customAvatars;
+    state.avatars = state.customAvatars.slice();
     avatarStatus.textContent = `${state.avatars.length} 个自定义头像，超出后循环`;
   } else {
     avatarMode.value = "web";
@@ -121,6 +163,187 @@ function luminance(red, green, blue) {
   return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
 }
 
+function colorDelta(a, b) {
+  return Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]);
+}
+
+function pixelAt(pixels, width, x, y) {
+  const index = (y * width + Math.max(0, Math.min(width - 1, x))) * 4;
+  return [pixels[index], pixels[index + 1], pixels[index + 2]];
+}
+
+function meanColor(colors) {
+  const count = colors.length || 1;
+  return [
+    Math.round(colors.reduce((sum, color) => sum + color[0], 0) / count),
+    Math.round(colors.reduce((sum, color) => sum + color[1], 0) / count),
+    Math.round(colors.reduce((sum, color) => sum + color[2], 0) / count),
+  ];
+}
+
+function sampleLeftStrip(pixels, width, y, leftX0, leftX1) {
+  const colors = [];
+  const step = Math.max(1, Math.floor((leftX1 - leftX0) / 6) || 1);
+  for (let x = leftX0; x < Math.max(leftX0 + 1, leftX1); x += step) {
+    colors.push(pixelAt(pixels, width, x, y));
+  }
+  return meanColor(colors);
+}
+
+function samplePageBackground(pixels, width, height) {
+  const samples = [];
+  const x = Math.max(2, Math.floor(width * 0.012));
+  const startY = Math.floor(height * 0.12);
+  const endY = Math.max(startY + 1, Math.floor(height * 0.22));
+  for (let y = startY; y < endY; y += 2) {
+    samples.push(pixelAt(pixels, width, x, y));
+  }
+  if (samples.length === 0) return [255, 255, 255];
+  samples.sort((a, b) => luminance(...a) - luminance(...b));
+  return samples[Math.floor(samples.length / 2)];
+}
+
+function detectExistingLikePanel(sample, pageBackground) {
+  const { context, width, height } = sample;
+  const pixels = context.getImageData(0, 0, width, height).data;
+  const startY = Math.floor(height * 0.14);
+  const endY = Math.floor(height * 0.88);
+  const leftX0 = Math.floor(width * 0.036);
+  const leftX1 = Math.floor(width * 0.058);
+  const avatarX0 = Math.floor(width * 0.125);
+  const avatarX1 = Math.floor(width * 0.96);
+  const minCell = Math.floor(width * 0.045);
+  const maxCell = Math.floor(width * 0.12);
+  const edgeStep = Math.max(1, Math.floor(width / 220));
+  const isPanelLeft = new Array(height).fill(false);
+  const edgeScore = new Array(height).fill(0);
+  const cellCount = new Array(height).fill(0);
+  const likeRow = new Array(height).fill(false);
+
+  for (let y = startY; y < endY; y += 1) {
+    const lefts = [];
+    const leftStep = Math.max(1, Math.floor((leftX1 - leftX0) / 6) || 1);
+    for (let x = leftX0; x < Math.max(leftX0 + 1, leftX1); x += leftStep) {
+      lefts.push(pixelAt(pixels, width, x, y));
+    }
+    const mean = meanColor(lefts);
+    const deltaPage = colorDelta(mean, pageBackground);
+    const uniform = Math.max(...lefts.map((color) => colorDelta(color, mean)));
+    isPanelLeft[y] = deltaPage >= 8 && uniform <= 28;
+
+    let edges = 0;
+    let checked = 0;
+    let previous = pixelAt(pixels, width, avatarX0, y);
+    for (let x = avatarX0; x < avatarX1; x += edgeStep) {
+      const current = pixelAt(pixels, width, x, y);
+      if (colorDelta(current, previous) > 70) edges += 1;
+      previous = current;
+      checked += 1;
+    }
+    edgeScore[y] = edges / Math.max(1, checked);
+
+    const cellBackground = isPanelLeft[y] ? mean : pageBackground;
+    let cells = 0;
+    let x = avatarX0;
+    while (x < avatarX1) {
+      if (colorDelta(pixelAt(pixels, width, x, y), cellBackground) <= 36) {
+        x += 1;
+        continue;
+      }
+      const runStart = x;
+      while (x < avatarX1 && colorDelta(pixelAt(pixels, width, x, y), cellBackground) > 36) {
+        x += 1;
+      }
+      const runWidth = x - runStart;
+      if (runWidth >= minCell && runWidth <= maxCell) cells += 1;
+    }
+    cellCount[y] = cells;
+    likeRow[y] = (isPanelLeft[y] && (edgeScore[y] > 0.05 || cells >= 3)) || cells >= 5;
+  }
+
+  const gapTolerance = Math.max(3, Math.floor(width * 0.04));
+  const clusters = [];
+  for (let y = startY; y < endY; ) {
+    if (!likeRow[y]) {
+      y += 1;
+      continue;
+    }
+    const clusterStart = y;
+    let last = y;
+    y += 1;
+    while (y < endY && y - last <= gapTolerance) {
+      if (likeRow[y]) last = y;
+      y += 1;
+    }
+    clusters.push([clusterStart, last]);
+  }
+
+  let best = null;
+  let bestScore = 0;
+  const minHeight = Math.floor(width * 0.05);
+  const maxHeight = Math.floor(height * 0.5);
+  const strongThreshold = Math.max(8, Math.round(width * 0.03));
+
+  for (const [clusterStart, clusterEnd] of clusters) {
+    let top = clusterStart;
+    let bottom = clusterEnd;
+    while (top - 1 >= startY && isPanelLeft[top - 1]) top -= 1;
+    while (bottom + 1 < endY && isPanelLeft[bottom + 1]) bottom += 1;
+    while (top - 1 >= startY) {
+      const mean = sampleLeftStrip(pixels, width, top - 1, leftX0, leftX1);
+      const delta = colorDelta(mean, pageBackground);
+      if (delta >= 3 && delta < 10) top -= 1;
+      else break;
+    }
+    while (bottom + 1 < endY) {
+      const mean = sampleLeftStrip(pixels, width, bottom + 1, leftX0, leftX1);
+      const delta = colorDelta(mean, pageBackground);
+      if (delta >= 3 && delta < 10) bottom += 1;
+      else break;
+    }
+
+    const panelHeight = bottom - top + 1;
+    if (panelHeight < minHeight || panelHeight > maxHeight) continue;
+
+    let avatarSum = 0;
+    let strong = 0;
+    for (let y = top; y <= bottom; y += 1) {
+      avatarSum += cellCount[y];
+      if (cellCount[y] >= 4 || edgeScore[y] > 0.08) strong += 1;
+    }
+    const score = avatarSum + strong * 10;
+    if (strong >= strongThreshold && score > bestScore) {
+      bestScore = score;
+      best = [top, bottom];
+    }
+  }
+
+  if (!best) return null;
+
+  const [top, bottom] = best;
+  const midY = top + Math.max(2, Math.floor((bottom - top) / 10));
+  let left = Math.floor(width * 0.008);
+  let right = width - Math.floor(width * 0.008);
+  while (left < Math.floor(width * 0.12) && colorDelta(pixelAt(pixels, width, left, midY), pageBackground) < 6) {
+    left += 1;
+  }
+  while (right > Math.floor(width * 0.88) && colorDelta(pixelAt(pixels, width, right, midY), pageBackground) < 6) {
+    right -= 1;
+  }
+
+  const pad = Math.max(2, Math.round(width * 0.008));
+  const scaleX = state.source.naturalWidth / width;
+  const scaleY = state.source.naturalHeight / height;
+  const x = Math.max(0, Math.round((left - pad) * scaleX));
+  const y = Math.max(0, Math.round((top - pad) * scaleY));
+  return {
+    x,
+    y,
+    width: Math.min(state.source.naturalWidth - x, Math.round((right - left + 1 + pad * 2) * scaleX)),
+    height: Math.min(state.source.naturalHeight - y, Math.round((bottom - top + 1 + pad * 2) * scaleY)),
+  };
+}
+
 function analyzeSource() {
   const sample = sampleSource();
   const { context, width, height } = sample;
@@ -143,6 +366,15 @@ function analyzeSource() {
   detectedTheme.textContent = state.themeChoice === "auto"
     ? `自动 · ${state.detectedTheme === "dark" ? "深色" : "浅色"}`
     : state.themeChoice === "dark" ? "深色" : "浅色";
+  state.pageBackground = samplePageBackground(pixels, width, height);
+  state.existingLikes = detectExistingLikePanel(sample, state.pageBackground);
+
+  if (state.existingLikes) {
+    const sourceY = clamp(state.existingLikes.y / state.source.naturalHeight * 100, 18, 70);
+    state.automaticPosition = Number(sourceY.toFixed(1));
+    positionRange.value = state.automaticPosition;
+    return;
+  }
 
   const startY = Math.floor(height * 0.2);
   const endY = Math.floor(height * 0.5);
@@ -245,6 +477,17 @@ function render() {
   }
 
   ctx.drawImage(state.source, 0, 0, width, height);
+  if (state.existingLikes) {
+    const [red, green, blue] = state.pageBackground;
+    ctx.fillStyle = `rgb(${red}, ${green}, ${blue})`;
+    ctx.fillRect(
+      state.existingLikes.x,
+      state.existingLikes.y,
+      state.existingLikes.width,
+      state.existingLikes.height,
+    );
+  }
+
   const count = getLikeCount();
   if (count === 0) {
     state.panelBounds = null;
@@ -253,7 +496,7 @@ function render() {
 
   const layout = calculateLayout(count);
   const theme = getTheme();
-  const panelColor = theme === "dark" ? "rgba(34, 34, 34, 0.98)" : "rgba(247, 248, 249, 0.98)";
+  const panelColor = theme === "dark" ? "rgb(34, 34, 34)" : "rgb(247, 247, 247)";
   const iconColor = theme === "dark" ? "#8393ad" : "#607493";
   const cornerRadius = Math.round(width * 0.007);
 
@@ -301,7 +544,35 @@ async function setSource(image, name) {
   imageDimensions.textContent = `${image.naturalWidth} × ${image.naturalHeight}`;
   emptyState.hidden = true;
   analyzeSource();
+  if (state.existingLikes) {
+    sourceStatus.textContent = `${name} · 保留原图主题与尺寸 · 已抹去原有点赞`;
+    showToast("已抹去原有点赞并按当前数量重绘");
+  }
   render();
+}
+
+function showSourcePickerPrompt(message = "尚未选择截图") {
+  state.source = null;
+  state.sourceName = "";
+  state.existingLikes = null;
+  state.panelBounds = null;
+  state.pageBackground = [255, 255, 255];
+  sourceStatus.textContent = message;
+  imageDimensions.textContent = "-- × --";
+  detectedTheme.textContent = state.themeChoice === "auto"
+    ? "自动"
+    : state.themeChoice === "dark" ? "深色" : "浅色";
+  emptyState.hidden = false;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  canvas.width = 0;
+  canvas.height = 0;
+}
+
+function clearSource() {
+  sourceInput.value = "";
+  showSourcePickerPrompt("尚未选择截图");
+  showToast("已清除图片");
 }
 
 async function filesToImages(files) {
@@ -316,28 +587,135 @@ async function filesToImages(files) {
   return entries;
 }
 
-async function loadDefaults() {
+function hasFilePayload(event) {
+  return Array.from(event.dataTransfer?.types || []).includes("Files");
+}
+
+function isSourceImageFile(file) {
+  if (!file) return false;
+  const type = (file.type || "").toLowerCase();
+  if (type === "image/jpeg" || type === "image/jpg" || type === "image/png" || type === "image/webp") {
+    return true;
+  }
+  return /\.(jpe?g|png|webp)$/i.test(file.name || "");
+}
+
+function pickSourceFile(fileList) {
+  return Array.from(fileList || []).find(isSourceImageFile) || null;
+}
+
+async function applySourceFile(file) {
+  if (!isSourceImageFile(file)) {
+    showToast("请选择或拖入 JPG、PNG 或 WebP 图片");
+    return;
+  }
   try {
-    const [source, avatars, webAvatars] = await Promise.all([
-      loadImage("原图.jpg"),
-      Promise.all(avatarNames.map((name) => loadImage(name).catch(() => null))),
-      Promise.all(webAvatarNames.map((name) => loadImage(name).catch(() => null))),
-    ]);
-    state.libraryAvatars = avatars.filter(Boolean);
-    state.webAvatars = webAvatars.filter(Boolean);
-    useAvatarMode("web");
+    const [image] = await filesToImages([file]);
+    await setSource(image, file.name || "截图.jpg");
+  } catch (error) {
+    showToast("图片无法读取，请换一张再试");
+  }
+}
+
+function setFileDragging(active) {
+  document.body.classList.toggle("is-file-dragging", active);
+}
+
+async function loadAvatarLibraries() {
+  const [avatars, webImages, manifest] = await Promise.all([
+    Promise.all(avatarNames.map((name) => loadImage(name).catch(() => null))),
+    Promise.all(webAvatarNames.map((name) => loadImage(name).catch(() => null))),
+    fetch("assets/web-avatars/sources.json").then((response) => response.json()).catch(() => null),
+  ]);
+
+  state.libraryAvatars = avatars.filter(Boolean);
+  state.webAvatars = webImages.filter(Boolean);
+
+  const imagesByFile = new Map();
+  webAvatarNames.forEach((name, index) => {
+    const image = webImages[index];
+    if (image) imagesByFile.set(name.split("/").pop(), image);
+  });
+
+  if (manifest?.files?.length) {
+    const bucketMap = new Map();
+    for (const entry of manifest.files) {
+      const image = imagesByFile.get(entry.file);
+      if (!image) continue;
+      if (!bucketMap.has(entry.style)) bucketMap.set(entry.style, []);
+      bucketMap.get(entry.style).push(image);
+    }
+    const styleOrder = manifest.keywords?.length
+      ? manifest.keywords
+      : [...bucketMap.keys()];
+    state.webStyleBuckets = styleOrder
+      .map((style) => ({ style, avatars: bucketMap.get(style) || [] }))
+      .filter((bucket) => bucket.avatars.length > 0);
+  } else {
+    state.webStyleBuckets = [];
+  }
+
+  useAvatarMode("web");
+}
+
+async function loadDefaults() {
+  sourceStatus.textContent = "正在准备头像库...";
+  try {
+    await loadAvatarLibraries();
+  } catch (error) {
+    avatarStatus.textContent = "头像库载入失败，可改用上传头像";
+  }
+
+  try {
+    const source = await loadImage("原图.jpg");
     await setSource(source, "原图.jpg");
   } catch (error) {
-    emptyState.textContent = "默认图片载入失败，请选择一张原始截图";
-    sourceStatus.textContent = "请选择原始截图";
+    showSourcePickerPrompt("请选择一张朋友圈截图开始");
   }
 }
 
 sourceInput.addEventListener("change", async () => {
   const [file] = sourceInput.files;
   if (!file) return;
-  const [image] = await filesToImages([file]);
-  await setSource(image, file.name);
+  await applySourceFile(file);
+});
+
+let fileDragDepth = 0;
+window.addEventListener("dragenter", (event) => {
+  if (!hasFilePayload(event)) return;
+  event.preventDefault();
+  fileDragDepth += 1;
+  setFileDragging(true);
+});
+window.addEventListener("dragover", (event) => {
+  if (!hasFilePayload(event)) return;
+  event.preventDefault();
+  event.dataTransfer.dropEffect = "copy";
+});
+window.addEventListener("dragleave", (event) => {
+  if (!hasFilePayload(event)) return;
+  fileDragDepth = Math.max(0, fileDragDepth - 1);
+  const outside = event.clientX <= 0 || event.clientY <= 0
+    || event.clientX >= window.innerWidth || event.clientY >= window.innerHeight;
+  if (fileDragDepth === 0 || outside) {
+    fileDragDepth = 0;
+    setFileDragging(false);
+  }
+});
+window.addEventListener("drop", async (event) => {
+  if (!hasFilePayload(event)) return;
+  event.preventDefault();
+  fileDragDepth = 0;
+  setFileDragging(false);
+  await applySourceFile(pickSourceFile(event.dataTransfer.files));
+});
+
+document.querySelector("#clearSourceButton").addEventListener("click", () => {
+  clearSource();
+});
+
+document.querySelector("#emptyPickButton").addEventListener("click", () => {
+  sourceInput.click();
 });
 
 avatarInput.addEventListener("change", async () => {
@@ -375,11 +753,15 @@ document.querySelectorAll("[data-theme]").forEach((button) => {
 });
 
 document.querySelector("#shuffleButton").addEventListener("click", () => {
-  if (state.avatars.length > 1) {
-    state.avatarOffset = (state.avatarOffset + 1 + Math.floor(Math.random() * (state.avatars.length - 1))) % state.avatars.length;
-    render();
-    showToast("头像顺序已更新");
+  if (state.avatars.length <= 1) return;
+  if (state.avatarMode === "web") {
+    state.avatars = arrangeWebAvatars();
+  } else {
+    shuffleInPlace(state.avatars);
   }
+  state.avatarOffset = 0;
+  render();
+  showToast(state.avatarMode === "web" ? "已按风格重新均匀穿插" : "头像顺序已更新");
 });
 
 document.querySelector("#resetButton").addEventListener("click", async () => {

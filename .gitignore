@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+
+# Avatar download scratch
+assets/web-avatars/raw/
+
+# Smoke test output
+生成结果.jpg
+
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+*.swp
+*~

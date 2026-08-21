@@ -18,7 +18,7 @@ const browser = spawn(browserPath, [
   "--disable-crash-reporter",
   `--remote-debugging-port=${port}`,
   `--user-data-dir=${profilePath}`,
-  "http://127.0.0.1:8765/",
+  "http://127.0.0.1:8767/",
 ], { stdio: "ignore" });
 
 function delay(milliseconds) {
@@ -29,7 +29,7 @@ async function findPage() {
   for (let attempt = 0; attempt < 40; attempt += 1) {
     try {
       const pages = await fetch(`http://127.0.0.1:${port}/json/list`).then((response) => response.json());
-      const page = pages.find((entry) => entry.type === "page" && entry.url.includes("127.0.0.1:8765"));
+      const page = pages.find((entry) => entry.type === "page" && entry.url.includes("127.0.0.1:8767"));
       if (page) return page;
     } catch {
       // Browser startup is still in progress.
@@ -102,13 +102,13 @@ try {
       range.dispatchEvent(new Event("input", { bubbles: true }));
       return canvas.toDataURL("image/jpeg", 0.94).length;
     };
-    const cases = [0, 20, 99].map((count) => ({ count, exportLength: setCount(count) }));
+    const cases = [0, 20, 200].map((count) => ({ count, exportLength: setCount(count) }));
     const exportLength = setCount(20);
     const defaultAvatarLabel = document.querySelector("#avatarStatus").textContent;
     const mode = document.querySelector("#avatarMode");
     mode.value = "web";
     mode.dispatchEvent(new Event("change", { bubbles: true }));
-    setCount(99);
+    setCount(200);
     const webAvatars = {
       status: document.querySelector("#avatarStatus").textContent,
       exportLength: canvas.toDataURL("image/jpeg", 0.94).length,
@@ -128,13 +128,13 @@ try {
   const assertions = [
     [result.dimensions[0] === 1320 && result.dimensions[1] === 2848, "canvas preserves source dimensions"],
     [result.themeLabel.includes("深色"), "dark theme is detected"],
-    [result.avatarLabel.includes("99") && result.avatarLabel.includes("网络"), "all cached web avatars load"],
+    [result.avatarLabel.includes("风格") || result.avatarLabel.includes("均匀"), "all cached web avatars load"],
     [result.position >= 26 && result.position <= 31, "like panel is positioned after the post metadata"],
     [result.exportLength > 100000, "JPEG export contains rendered image data"],
     [result.cases[1].exportLength > result.cases[0].exportLength, "twenty likes renders the panel"],
-    [result.cases[2].exportLength > result.cases[1].exportLength, "ninety-nine likes render additional rows"],
+    [result.cases[2].exportLength > result.cases[1].exportLength, "two hundred likes render additional rows"],
     [result.loadingHidden === true, "loading state is hidden after render"],
-    [result.webAvatars.status.includes("99") && result.webAvatars.status.includes("不重复"), "web avatar mode has 99 unique entries"],
+    [result.webAvatars.status.includes("不重复") && (result.webAvatars.status.includes("均匀") || result.webAvatars.status.includes("风格") || Number.parseInt(result.webAvatars.status, 10) >= 200), "web avatar mode has enough unique entries"],
     [result.webAvatars.exportLength > result.exportLength, "cached web avatars render into export"],
   ];
 

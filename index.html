@@ -23,9 +23,12 @@
   <main class="workspace">
     <aside class="controls" aria-label="生成设置">
       <section class="control-section">
-        <h2>原始截图</h2>
+        <div class="label-row">
+          <h2>原始截图</h2>
+          <button class="text-button" id="clearSourceButton" type="button">清除图片</button>
+        </div>
         <label class="file-drop" for="sourceInput">
-          <span class="file-drop-title">选择朋友圈截图</span>
+          <span class="file-drop-title">选择或拖入截图</span>
           <span class="file-drop-detail">JPG、PNG 或 WebP</span>
         </label>
         <input id="sourceInput" type="file" accept="image/jpeg,image/png,image/webp" hidden>
@@ -38,10 +41,10 @@
         </div>
         <div class="stepper">
           <button id="decreaseButton" type="button" aria-label="减少点赞数量">−</button>
-          <input id="likeCount" type="range" min="0" max="99" value="20">
+          <input id="likeCount" type="range" min="0" max="200" value="20">
           <button id="increaseButton" type="button" aria-label="增加点赞数量">＋</button>
         </div>
-        <input id="likeCountNumber" class="number-input" type="number" min="0" max="99" value="20" aria-label="点赞数量">
+        <input id="likeCountNumber" class="number-input" type="number" min="0" max="200" value="20" aria-label="点赞数量">
       </section>
 
       <section class="control-section">
@@ -93,7 +96,12 @@
     <section class="preview-area" aria-label="图片预览">
       <div class="canvas-shell" id="canvasShell">
         <canvas id="previewCanvas"></canvas>
-        <div class="empty-state" id="emptyState">载入图片中...</div>
+        <div class="empty-state" id="emptyState">
+          <button class="empty-state-action" id="emptyPickButton" type="button">
+            <span class="empty-state-title">选择或拖入一张朋友圈截图</span>
+            <span class="empty-state-detail">支持 JPG、PNG、WebP，可点选或直接拖到这里</span>
+          </button>
+        </div>
       </div>
       <div class="preview-meta">
         <span id="imageDimensions">-- × --</span>
