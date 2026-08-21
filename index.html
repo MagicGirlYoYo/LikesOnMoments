@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>朋友圈点赞截图生成器</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <h1>朋友圈点赞截图生成器</h1>
+      <p id="sourceStatus">正在载入原图...</p>
+    </div>
+    <div class="header-actions">
+      <button class="icon-button" id="resetButton" type="button" title="恢复默认设置" aria-label="恢复默认设置">
+        <span aria-hidden="true">↺</span>
+      </button>
+      <button class="primary-button" id="downloadButton" type="button">下载图片</button>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <aside class="controls" aria-label="生成设置">
+      <section class="control-section">
+        <h2>原始截图</h2>
+        <label class="file-drop" for="sourceInput">
+          <span class="file-drop-title">选择朋友圈截图</span>
+          <span class="file-drop-detail">JPG、PNG 或 WebP</span>
+        </label>
+        <input id="sourceInput" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+      </section>
+
+      <section class="control-section">
+        <div class="label-row">
+          <label for="likeCount">点赞数量</label>
+          <output id="likeCountOutput" for="likeCount">20</output>
+        </div>
+        <div class="stepper">
+          <button id="decreaseButton" type="button" aria-label="减少点赞数量">−</button>
+          <input id="likeCount" type="range" min="0" max="99" value="20">
+          <button id="increaseButton" type="button" aria-label="增加点赞数量">＋</button>
+        </div>
+        <input id="likeCountNumber" class="number-input" type="number" min="0" max="99" value="20" aria-label="点赞数量">
+      </section>
+
+      <section class="control-section">
+        <div class="label-row">
+          <span>显示主题</span>
+          <span class="muted" id="detectedTheme">自动</span>
+        </div>
+        <div class="segmented" role="group" aria-label="显示主题">
+          <button class="active" type="button" data-theme="auto">自动</button>
+          <button type="button" data-theme="light">浅色</button>
+          <button type="button" data-theme="dark">深色</button>
+        </div>
+      </section>
+
+      <section class="control-section">
+        <div class="label-row">
+          <label for="positionRange">点赞栏位置</label>
+          <button class="text-button" id="autoPositionButton" type="button">自动定位</button>
+        </div>
+        <input id="positionRange" type="range" min="18" max="70" value="28" step="0.1">
+      </section>
+
+      <section class="control-section">
+        <div class="label-row">
+          <span>头像</span>
+          <span class="muted" id="avatarStatus">内置头像</span>
+        </div>
+        <select id="avatarMode" class="full-select" aria-label="头像来源">
+          <option value="web">网络头像包（已缓存）</option>
+          <option value="library">内置头像（样例素材）</option>
+          <option value="custom">上传头像</option>
+        </select>
+        <label class="secondary-button" for="avatarInput">上传自定义头像</label>
+        <input id="avatarInput" type="file" accept="image/*" multiple hidden>
+        <button class="secondary-button" id="shuffleButton" type="button">随机换一批</button>
+      </section>
+
+      <section class="control-section compact">
+        <div class="label-row">
+          <label for="formatSelect">导出格式</label>
+          <select id="formatSelect">
+            <option value="image/jpeg">JPG</option>
+            <option value="image/png">PNG</option>
+          </select>
+        </div>
+      </section>
+    </aside>
+
+    <section class="preview-area" aria-label="图片预览">
+      <div class="canvas-shell" id="canvasShell">
+        <canvas id="previewCanvas"></canvas>
+        <div class="empty-state" id="emptyState">载入图片中...</div>
+      </div>
+      <div class="preview-meta">
+        <span id="imageDimensions">-- × --</span>
+        <span id="previewTheme">原图主题</span>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>

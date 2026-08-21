@@ -1,0 +1,409 @@
+:root {
+  color-scheme: light;
+  font-family: "Microsoft YaHei UI", "PingFang SC", system-ui, sans-serif;
+  color: #202124;
+  background: #eef1f4;
+  font-synthesis: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background: #eef1f4;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button,
+label[for] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  cursor: pointer;
+}
+
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 76px;
+  padding: 12px 24px;
+  border-bottom: 1px solid #d9dee3;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(12px);
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: 20px;
+  font-weight: 650;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+
+.app-header p {
+  margin-top: 3px;
+  color: #6b737c;
+  font-size: 13px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.icon-button,
+.primary-button,
+.secondary-button,
+.text-button,
+.segmented button,
+.stepper button {
+  border: 0;
+  border-radius: 6px;
+}
+
+.icon-button {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 1px solid #d8dde2;
+  background: #fff;
+  color: #30363c;
+  font-size: 23px;
+}
+
+.primary-button {
+  height: 40px;
+  padding: 0 18px;
+  background: #137a4c;
+  color: #fff;
+  font-weight: 600;
+}
+
+.primary-button:hover {
+  background: #0f6840;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  min-height: calc(100vh - 76px);
+}
+
+.controls {
+  padding: 8px 22px 32px;
+  border-right: 1px solid #d9dee3;
+  background: #fff;
+}
+
+.full-select {
+  width: 100%;
+  margin: 2px 0 8px;
+}
+
+.control-section {
+  padding: 20px 0;
+  border-bottom: 1px solid #e8ebee;
+}
+
+.control-section.compact {
+  border-bottom: 0;
+}
+
+.control-section h2,
+.control-section label,
+.control-section .label-row > span:first-child {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 28px;
+  margin-bottom: 10px;
+}
+
+.muted {
+  color: #77808a;
+  font-size: 12px;
+}
+
+.file-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 82px;
+  margin-top: 12px;
+  border: 1px dashed #aeb7bf;
+  border-radius: 6px;
+  background: #f8fafb;
+  cursor: pointer;
+}
+
+.file-drop:hover {
+  border-color: #137a4c;
+  background: #f2f8f5;
+}
+
+.file-drop-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.file-drop-detail {
+  margin-top: 5px;
+  color: #78818a;
+  font-size: 12px;
+}
+
+.stepper {
+  display: grid;
+  grid-template-columns: 34px 1fr 34px;
+  align-items: center;
+  gap: 8px;
+}
+
+.stepper button {
+  width: 34px;
+  height: 34px;
+  border: 1px solid #d7dde2;
+  background: #f7f8f9;
+  color: #353b41;
+  font-size: 19px;
+}
+
+input[type="range"] {
+  width: 100%;
+  accent-color: #137a4c;
+}
+
+.number-input {
+  width: 100%;
+  height: 38px;
+  margin-top: 10px;
+  padding: 0 10px;
+  border: 1px solid #d7dde2;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.segmented {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  padding: 3px;
+  border-radius: 7px;
+  background: #edf0f2;
+}
+
+.segmented button {
+  height: 32px;
+  background: transparent;
+  color: #66707a;
+  font-size: 13px;
+}
+
+.segmented button.active {
+  background: #fff;
+  color: #202124;
+  box-shadow: 0 1px 3px rgba(18, 28, 36, 0.13);
+  font-weight: 600;
+}
+
+.text-button {
+  padding: 4px 0;
+  background: transparent;
+  color: #137a4c;
+  font-size: 12px;
+}
+
+.secondary-button {
+  display: block;
+  width: 100%;
+  height: 38px;
+  margin-top: 8px;
+  padding: 0 12px;
+  border: 1px solid #d7dde2;
+  background: #fff;
+  color: #30363c;
+  line-height: 36px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.secondary-button:hover,
+.icon-button:hover,
+.stepper button:hover {
+  background: #f4f6f7;
+}
+
+select {
+  min-width: 82px;
+  height: 34px;
+  padding: 0 8px;
+  border: 1px solid #d7dde2;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.preview-area {
+  display: flex;
+  min-width: 0;
+  padding: 28px 32px 18px;
+  flex-direction: column;
+  align-items: center;
+}
+
+.canvas-shell {
+  position: relative;
+  display: flex;
+  width: min(100%, 720px);
+  height: calc(100vh - 146px);
+  min-height: 480px;
+  align-items: flex-start;
+  justify-content: center;
+  overflow: auto;
+  border: 1px solid #d5dbe0;
+  border-radius: 8px;
+  background-color: #dfe4e7;
+  background-image: linear-gradient(45deg, #d6dce0 25%, transparent 25%), linear-gradient(-45deg, #d6dce0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #d6dce0 75%), linear-gradient(-45deg, transparent 75%, #d6dce0 75%);
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+  background-size: 16px 16px;
+  box-shadow: 0 8px 24px rgba(43, 54, 63, 0.1);
+}
+
+canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  cursor: grab;
+}
+
+canvas.dragging {
+  cursor: grabbing;
+}
+
+.empty-state {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #68727b;
+  font-size: 14px;
+}
+
+.empty-state[hidden] {
+  display: none;
+}
+
+.preview-meta {
+  display: flex;
+  width: min(100%, 720px);
+  justify-content: space-between;
+  padding: 10px 2px 0;
+  color: #727b84;
+  font-size: 12px;
+}
+
+.toast {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 20;
+  max-width: min(360px, calc(100vw - 44px));
+  padding: 11px 15px;
+  border-radius: 6px;
+  background: #20252a;
+  color: #fff;
+  font-size: 13px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(8px);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.toast.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (max-width: 780px) {
+  .app-header {
+    padding: 10px 14px;
+  }
+
+  .app-header p {
+    display: none;
+  }
+
+  h1 {
+    font-size: 16px;
+  }
+
+  .workspace {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 18px;
+    padding: 4px 16px 12px;
+    border-right: 0;
+    border-bottom: 1px solid #d9dee3;
+  }
+
+  .control-section {
+    padding: 14px 0;
+  }
+
+  .preview-area {
+    padding: 18px 12px 12px;
+  }
+
+  .canvas-shell {
+    height: 72vh;
+    min-height: 420px;
+  }
+}
+
+@media (max-width: 500px) {
+  .controls {
+    grid-template-columns: 1fr;
+  }
+
+  .header-actions {
+    gap: 6px;
+  }
+
+  .primary-button {
+    padding: 0 12px;
+  }
+
+  .preview-meta span:last-child {
+    display: none;
+  }
+}
