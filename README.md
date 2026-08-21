@@ -4,6 +4,8 @@
 
 ## 使用
 
+在线打开：https://magicgirlyoyo.github.io/LikesOnMoments/
+
 1. 双击 `start.bat`（Windows）或在项目目录运行 `python3 -m http.server 8767 --bind 0.0.0.0`。
 2. 浏览器打开 `http://127.0.0.1:8767/`，选择或拖入原始朋友圈截图，或使用默认的 `原图.jpg`。
 3. 设置点赞数量；需要时上传自定义头像或拖动预览中的点赞栏。
